@@ -17,6 +17,7 @@
 #include <cstdint>
 
 #include "feather/buffer.h"
+#include "feather/common.h"
 #include "feather/metadata_generated.h"
 #include "feather/status.h"
 
@@ -26,10 +27,8 @@ namespace metadata {
 
 typedef flatbuffers::FlatBufferBuilder FBB;
 
-using FBString = flatbuffers::Offset<flatbuffers::String>;
-
-// Flatbuffers conveniences
-using ColumnVector = std::vector<flatbuffers::Offset<fbs::Column>>;
+typedef flatbuffers::Offset<flatbuffers::String> FBString;
+typedef std::vector<flatbuffers::Offset<fbs::Column>> ColumnVector;
 
 // ----------------------------------------------------------------------
 // Primitive array
@@ -126,8 +125,6 @@ fbs::TypeMetadata ToFlatbufferEnum(ColumnType::type column_type) {
 // ----------------------------------------------------------------------
 // TableBuilder
 
-static constexpr int FEATHER_VERSION = 1;
-
 class TableBuilder::Impl {
  public:
   explicit Impl(int64_t num_rows) :
@@ -154,7 +151,7 @@ class TableBuilder::Impl {
         desc,
         num_rows_,
         fbb_.CreateVector(columns_),
-        FEATHER_VERSION, metadata);
+        kFeatherVersion, metadata);
     fbb_.Finish(root);
     finished_ = true;
 
@@ -186,8 +183,9 @@ TableBuilder::TableBuilder(int64_t num_rows) {
   impl_.reset(new Impl(num_rows));
 }
 
-TableBuilder::TableBuilder() :
-    TableBuilder(0) {}
+TableBuilder::TableBuilder() {
+  impl_.reset(new Impl(0));
+}
 
 std::shared_ptr<Buffer> TableBuilder::GetBuffer() const {
   return std::make_shared<Buffer>(impl_->fbb().GetBufferPointer(),
@@ -326,11 +324,9 @@ class ColumnBuilder::Impl {
   ColumnType::type type_;
 
   // Type-specific metadata union
-  union {
-    CategoryMetadata meta_category_;
-    DateMetadata meta_date_;
-    TimeMetadata meta_time_;
-  };
+  CategoryMetadata meta_category_;
+  // DateMetadata meta_date_; // not used?
+  TimeMetadata meta_time_;
 
   TimestampMetadata meta_timestamp_;
 
@@ -421,7 +417,7 @@ size_t Table::num_columns() const {
   return table->columns()->size();
 }
 
-std::shared_ptr<Column> Table::GetColumn(size_t i) const {
+std::shared_ptr<Column> Table::GetColumn(int i) const {
   const fbs::CTable* table = static_cast<const fbs::CTable*>(table_);
   const fbs::Column* col = table->columns()->Get(i);
 
@@ -441,12 +437,12 @@ std::shared_ptr<Column> Table::GetColumn(size_t i) const {
       break;
   }
   // suppress compiler warning
-  return std::shared_ptr<Column>(nullptr);
+  return std::shared_ptr<Column>();
 }
 
 std::shared_ptr<Column> Table::GetColumnNamed(const std::string& name) const {
   // Not yet implemented
-  return std::shared_ptr<Column>(nullptr);
+  return std::shared_ptr<Column>();
 }
 
 // ----------------------------------------------------------------------
@@ -486,6 +482,11 @@ std::string Column::name() const {
 ColumnType::type Column::type() const {
   return type_;
 }
+
+PrimitiveType::type Column::values_type() const {
+  return values_.type;
+}
+
 
 std::string Column::user_metadata() const {
   return user_metadata_;

@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "feather/compatibility.h"
 #include "feather/buffer.h"
 #include "feather/types.h"
 
@@ -85,6 +86,8 @@ class Column {
 
   std::string name() const;
   ColumnType::type type() const;
+
+  PrimitiveType::type values_type() const;
 
   std::string user_metadata() const;
 
@@ -161,7 +164,7 @@ class Table {
   int64_t num_rows() const;
 
   size_t num_columns() const;
-  std::shared_ptr<Column> GetColumn(size_t i) const;
+  std::shared_ptr<Column> GetColumn(int i) const;
   std::shared_ptr<Column> GetColumnNamed(const std::string& name) const;
 
  private:

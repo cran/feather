@@ -4,7 +4,7 @@ using namespace Rcpp;
 #include "feather-types.h"
 using namespace feather;
 
-RColType toRColType(FeatherColType x) {
+RColType toRColType(FeatherPrimitiveType x) {
   switch(x) {
   case PrimitiveType::BOOL:
     return R_LGL;
@@ -26,12 +26,12 @@ RColType toRColType(FeatherColType x) {
     return R_RAW;
   }
   throw std::runtime_error("Invalid FeatherColType");
-};
+}
 
-RColType toRColType(const ColumnPtr& x) {
-  switch(x->type()) {
+RColType toRColType(FeatherColumnType col_type, FeatherPrimitiveType primitive_type) {
+  switch(col_type) {
   case feather::ColumnType::PRIMITIVE:
-    return toRColType(x->metadata()->values().type);
+    return toRColType(primitive_type);
   case feather::ColumnType::CATEGORY:
     return R_FACTOR;
   case feather::ColumnType::TIMESTAMP:
@@ -83,10 +83,28 @@ void copyRecast(const PrimitiveArray* src, DestType* dest) {
   std::copy(&recast[0], &recast[0] + n, dest);
 }
 
+void setMissing(SEXP x, const PrimitiveArray* val) {
+  if (val->null_count == 0)
+    return;
+
+  int64_t n = val->length;
+  for (int i = 0; i < n; ++i) {
+    if (util::bit_not_set(val->nulls, i)) {
+      switch(TYPEOF(x)) {
+      case LGLSXP: INTEGER(x)[i] = NA_LOGICAL; break;
+      case INTSXP: INTEGER(x)[i] = NA_INTEGER; break;
+      case REALSXP: REAL(x)[i] = NA_REAL; break;
+      case STRSXP: SET_STRING_ELT(x, i, NA_STRING); break;
+      default: break;
+      }
+    }
+  }
+}
+
 SEXP toSEXP(const PrimitiveArray* val) {
   int64_t n = val->length;
   RColType rType = toRColType(val->type);
-  SEXP out = Rf_allocVector(toSEXPTYPE(rType), n);
+  SEXP out = PROTECT(Rf_allocVector(toSEXPTYPE(rType), n));
 
   switch(val->type) {
   case PrimitiveType::BOOL: {
@@ -143,9 +161,10 @@ SEXP toSEXP(const PrimitiveArray* val) {
       uint32_t offset1 = val->offsets[i], offset2 = val->offsets[i + 1];
       int32_t n = offset2 - offset1;
 
-      SEXP raw = Rf_allocVector(RAWSXP, n);
+      SEXP raw = PROTECT(Rf_allocVector(RAWSXP, n));
       memcpy(RAW(out), asChar + offset1, n);
       SET_VECTOR_ELT(out, i, raw);
+      UNPROTECT(1);
     }
     break;
   }
@@ -153,21 +172,9 @@ SEXP toSEXP(const PrimitiveArray* val) {
     break;
   }
 
-  if (val->null_count > 0) {
-    for (int i = 0; i < n; ++i) {
-      if (util::bit_not_set(val->nulls, i)) {
-        switch(TYPEOF(out)) {
-        case LGLSXP: INTEGER(out)[i] = NA_LOGICAL; break;
-        case INTSXP: INTEGER(out)[i] = NA_INTEGER; break;
-        case REALSXP: REAL(out)[i] = NA_REAL; break;
-        case STRSXP: SET_STRING_ELT(out, i, NA_STRING); break;
-        default: break;
-        }
-      }
-    }
-  }
+  setMissing(out, val);
 
-
+  UNPROTECT(1);
   return out;
 }
 
@@ -191,7 +198,7 @@ SEXP rescaleFromInt64(const PrimitiveArray* pArray, double scale = 1) {
   auto pValues = reinterpret_cast<const int64_t*>(pArray->values);
   int n = pArray->length;
 
-  SEXP out = Rf_allocVector(REALSXP, n);
+  SEXP out = PROTECT(Rf_allocVector(REALSXP, n));
   double* pOut = REAL(out);
 
   if (scale == 1) {
@@ -201,15 +208,24 @@ SEXP rescaleFromInt64(const PrimitiveArray* pArray, double scale = 1) {
       pOut[i] = pValues[i] / scale;
     }
   }
+  setMissing(out, pArray);
 
+  UNPROTECT(1);
   return out;
 }
 
 template <typename T>
-static void write_factor_codes(const uint8_t* values, int length, int* out) {
-  auto codes = reinterpret_cast<const T*>(values);
-  for (int i = 0; i < length; ++i) {
-    out[i] = codes[i] + 1;
+static void write_factor_codes(const PrimitiveArray* arr, int* out) {
+  auto codes = reinterpret_cast<const T*>(arr->values);
+  if (arr->null_count > 0) {
+    for (int i = 0; i < arr->length; ++i) {
+      // The bit is 1 if it is not null
+      out[i] = util::get_bit(arr->nulls, i) ? codes[i] + 1 : NA_INTEGER;
+    }
+  } else {
+    for (int i = 0; i < arr->length; ++i) {
+      out[i] = codes[i] + 1;
+    }
   }
 }
 
@@ -221,21 +237,21 @@ SEXP toSEXP(const ColumnPtr& x) {
   case feather::ColumnType::PRIMITIVE:
     return toSEXP(val);
   case feather::ColumnType::CATEGORY: {
-    IntegerVector out = Rf_allocVector(INTSXP, val->length);
+    IntegerVector out(val->length);
 
     // Add 1 to category values
     switch (val->type) {
       case PrimitiveType::INT8:
-        write_factor_codes<int8_t>(val->values, val->length, INTEGER(out));
+        write_factor_codes<int8_t>(val, INTEGER(out));
         break;
       case PrimitiveType::INT16:
-        write_factor_codes<int16_t>(val->values, val->length, INTEGER(out));
+        write_factor_codes<int16_t>(val, INTEGER(out));
         break;
       case PrimitiveType::INT32:
-        write_factor_codes<int32_t>(val->values, val->length, INTEGER(out));
+        write_factor_codes<int32_t>(val, INTEGER(out));
         break;
       case PrimitiveType::INT64:
-        write_factor_codes<int64_t>(val->values, val->length, INTEGER(out));
+        write_factor_codes<int64_t>(val, INTEGER(out));
         break;
       default:
         stop("Factor codes not a signed integer");
@@ -258,7 +274,8 @@ SEXP toSEXP(const ColumnPtr& x) {
     auto x_time = static_cast<feather::TimeColumn*>(x.get());
 
     DoubleVector out = rescaleFromInt64(val, timeScale(x_time->unit()));
-    out.attr("class") = "time";
+    out.attr("class") = CharacterVector::create("hms", "difftime");
+    out.attr("units") = "secs";
     return out;
   }
   case feather::ColumnType::TIMESTAMP: {

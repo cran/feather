@@ -80,16 +80,23 @@ test_that("preserves dates", {
 
 # Time --------------------------------------------------------------------
 
-test_that("preserves times", {
-  x <- structure(as.numeric(1:100), class = "time")
+test_that("preserves hms", {
+  x <- hms::hms(1:100)
   expect_identical(roundtrip_vector(x), x)
+})
+
+test_that("converts time to hms", {
+  x1 <- structure(1:100, class = "time")
+  x2 <- roundtrip_vector(x1)
+
+  expect_s3_class(x2, "hms")
 })
 
 
 # Timestamp/POSIXct -------------------------------------------------------
 
 test_that("preserves times", {
-  x1 <- ISOdate(2001, 10, 10, tz = "US/Pacific")
+  x1 <- ISOdate(2001, 10, 10, tz = "US/Pacific") + c(0, NA)
   x2 <- roundtrip_vector(x1)
 
   expect_identical(attr(x1, "tzone"), attr(x2, "tzone"))

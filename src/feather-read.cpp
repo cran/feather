@@ -21,18 +21,25 @@ std::unique_ptr<Column> getColumn(const TableReader& table, int i) {
   return col;
 }
 
+std::shared_ptr<metadata::Column> getColumnMetadata(const TableReader& table,
+    int i) {
+  std::shared_ptr<metadata::Column> meta;
+  stopOnFailure(table.GetColumnMetadata(i, &meta));
+  return meta;
+}
+
 // [[Rcpp::export]]
 List metadataFeather(const std::string& path) {
-  auto table = openFeatherTable(path);
+  std::unique_ptr<TableReader> table = openFeatherTable(path);
 
   int n = table->num_rows(), p = table->num_columns();
   CharacterVector types(p), names(p);
 
   for (int j = 0; j < p; ++j) {
-    auto col = getColumn(*table, j);
+    auto meta = getColumnMetadata(*table, j);
 
-    names[j] = col->name();
-    types[j] = toString(toRColType(col));
+    names[j] = Rf_mkCharCE(meta->name().c_str(), CE_UTF8);
+    types[j] = toString(toRColType(meta->type(), meta->values_type()));
   }
   types.attr("names") = names;
 
@@ -53,9 +60,8 @@ CharacterVector colnamesAsCharacterVector(const TableReader& table) {
   CharacterVector names(n);
 
   for (int i = 0; i < n; ++i) {
-    auto col = getColumn(table, i);
-
-    names[i] = col->name();
+    auto meta = getColumnMetadata(table, i);
+    names[i] = Rf_mkCharCE(meta->name().c_str(), CE_UTF8);
   }
 
   return names;
@@ -76,8 +82,16 @@ List openFeather(const std::string& path) {
 }
 
 
+// [[Rcpp::export]]
+void closeFeather(const List& feather) {
+  Rcpp::as<XPtr<TableReader> >(feather.attr("table")).release();
+}
+
+
 TableReader* getTableFromFeather(const List& feather) {
-  return Rcpp::as<XPtr<TableReader> >(feather.attr("table"));
+  TableReader* table = Rcpp::as<XPtr<TableReader> >(feather.attr("table")).get();
+  if (!table) Rcpp::stop("feather already closed");
+  return table;
 }
 
 
@@ -98,7 +112,7 @@ List coldataFeather(const List& feather, const IntegerVector& indexes) {
   for (int i = 0; i < n; ++i) {
     auto col = getColumn(*table, indexes[i] - 1);
 
-    names[i] = col->name();
+    names[i] = Rf_mkCharCE(col->name().c_str(), CE_UTF8);
     out[i] = toSEXP(col);
   }
 

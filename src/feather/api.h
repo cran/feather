@@ -19,6 +19,7 @@
   #undef timezone
 #endif
 
+#include "feather/compatibility.h"
 #include "feather/buffer.h"
 #include "feather/common.h"
 #include "feather/io.h"

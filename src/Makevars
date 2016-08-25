@@ -1,5 +1,5 @@
-CXX_STD=CXX11
-PKG_CPPFLAGS=-I.
+CXX_STD = CXX11
+PKG_CPPFLAGS = -I.
 PKG_LIBS=-L. -lfeather
 
 LIBFEATHER=feather/buffer.o feather/feather-c.o feather/io.o feather/metadata.o \

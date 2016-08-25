@@ -15,6 +15,8 @@ NULL
 #' @export
 read_feather <- function(path, columns = NULL) {
   data <- feather(path)
+  on.exit(close(data), add = TRUE)
+
   if (is.null(columns))
     as_data_frame(data)
   else
@@ -52,3 +54,8 @@ print.feather_metadata <- function(x, ...) {
   names <- format(encodeString(names(x$types), quote = "'"))
   cat(paste0("* ", names, ": ", x$types, "\n"), sep = "")
 }
+
+
+# Force import of hms package
+#' @importFrom hms hms
+NULL
