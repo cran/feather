@@ -1,6 +1,6 @@
 Package: feather
 Title: R Bindings to the Feather 'API'
-Version: 0.3.1
+Version: 0.3.2
 Authors@R: c(
     person("Hadley", "Wickham", , "hadley@rstudio.com", role = c("aut", "cre")),
     person("RStudio", role = "cph"),
@@ -19,9 +19,9 @@ LinkingTo: Rcpp
 Imports: Rcpp, tibble, hms
 Suggests: testthat, dplyr
 SystemRequirements: little-endian platform
-RoxygenNote: 5.0.1
+RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Packaged: 2016-11-08 22:45:11 UTC; kevin
+Packaged: 2019-01-07 14:30:33 UTC; hadley
 Author: Hadley Wickham [aut, cre],
   RStudio [cph],
   Feather developers [ctb] (Bundled feather library),
@@ -29,4 +29,4 @@ Author: Hadley Wickham [aut, cre],
   LevelDB Authors [ctb]
 Maintainer: Hadley Wickham <hadley@rstudio.com>
 Repository: CRAN
-Date/Publication: 2016-11-09 00:35:01
+Date/Publication: 2019-01-07 21:20:03 UTC

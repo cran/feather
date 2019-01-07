@@ -7,7 +7,7 @@
 #' @return An object of class \code{feather}
 #' @export
 feather <- function(path) {
-  path <- normalizePath(path, mustWork = TRUE)
+  path <- enc2native(normalizePath(path, mustWork = TRUE))
 
   openFeather(path)
 }
@@ -103,21 +103,17 @@ dim.feather <- function(x) c(rowsFeather(x), length(x))
 # Coercion ----------------------------------------------------------------
 
 #' @export
-#' @importFrom tibble as_data_frame
+#' @importFrom tibble as_tibble
 as.data.frame.feather <- function(x, row.names = NULL, optional = FALSE, ...) {
   if (!is.null(row.names))
     stop("row.names must be NULL for as.data.frame.feather")
-  as.data.frame(as_data_frame(x))
+  as.data.frame(as_tibble(x[]))
 }
 
-#' @export
-as_data_frame.feather <- function(x, ...) {
-  x[]
-}
 
 #' @export
 as.list.feather <- function(x, ...) {
-  as.list(as_data_frame(x))
+  as.list(as_tibble(x))
 }
 
 
