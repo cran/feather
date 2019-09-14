@@ -1,6 +1,6 @@
-d81dd91c038464d852b89983bf4b2924 *DESCRIPTION
+01929cbc3d1efb06762f48de56e7ca3b *DESCRIPTION
 a00551590e4df2f68a0d3337c96d6c29 *NAMESPACE
-af5ece4f372ba2e7f1ba4e9932fffee8 *NEWS.md
+550ccbd10238965205af906d97c89a9a *NEWS.md
 2b09e4631ed2f93aad4633124fed5ac5 *R/RcppExports.R
 d98d695a54307e2250bac22e074e10fa *R/class.R
 a34e71b468e53dc80d69994cbaebf195 *R/feather.R
@@ -111,5 +111,5 @@ cc5e30fc15560b211f4c93c0d96ff492 *tests/testthat.R
 0a9ad4b4687745d30486663d916087e2 *tests/testthat/helper-roundtrip.R
 96ff967ff09494ae4f67e92d26fd126b *tests/testthat/test-class.R
 b8eaa2c8c85b4edbf7b5510b1ea6d089 *tests/testthat/test-overwrite.R
-aa0dea30045bc0dd341eb7ab71d65e96 *tests/testthat/test-read.R
+1d28b062110601438a757d1bfc189ab4 *tests/testthat/test-read.R
 8c2526ce65dcf251cc55c4cc0b0661ee *tests/testthat/test-roundtrip-vector.R
